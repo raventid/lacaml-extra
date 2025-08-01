@@ -1,0 +1,4 @@
+(library
+ (public_name lacaml-extra)
+ (name lacaml_extra)
+ (libraries lacaml))

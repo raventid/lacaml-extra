@@ -1,0 +1,17 @@
+opam-version: "2.0"
+name: "lacaml-extra"
+version: "0.1.0"
+synopsis: "High-level neural network utilities for OCaml, extending Lacaml"
+description: "Provides activations, gradients, and losses built on Lacaml's linear algebra."
+depends: [
+  "dune" {>= "3.0"}
+  "lacaml"
+  "alcotest" {with-test}
+  "qcheck" {with-test}
+  "qcheck-alcotest" {with-test}
+]
+build: [
+  ["dune" "subst"] {dev}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
