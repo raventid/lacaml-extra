@@ -12,7 +12,3 @@ let relu_grad (x: Mat.t) : Mat.t =
 (* Sigmoid activation function: 1 / (1 + exp(-x)) element-wise *)
 let sigmoid (x: Mat.t) : Mat.t =
   failwith "Not implemented yet"
-
-(* Sigmoid gradient: sigmoid(x) * (1 - sigmoid(x)) *)
-let sigmoid_grad (x: Mat.t) : Mat.t =
-  failwith "Not implemented yet"
