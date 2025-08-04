@@ -110,6 +110,45 @@ let test_sigmoid_grad_basic () =
   done;
   check bool "sigmoid_grad values are positive" true !all_positive
 
+(* Test for Tanh activation function *)
+let test_tanh_basic () =
+  let input = Mat.of_array [| [| 0.0; 1.0; -1.0 |] |] in
+  let expected = Mat.of_array [| [| 0.0; 0.7615941559557649; -0.7615941559557649 |] |] in
+  let result = Activations.tanh input in
+  check mat_testable "tanh basic test" expected result
+
+let test_tanh_batch () =
+  let input = Mat.of_array [| 
+    [| 0.0; 2.0 |];
+    [| -2.0; 0.5 |]
+  |] in
+  let result = Activations.tanh input in
+  let rows, cols = Mat.dim1 result, Mat.dim2 result in
+  (* Check all values are between -1 and 1 *)
+  let all_in_range = ref true in
+  for i = 1 to rows do
+    for j = 1 to cols do
+      let v = result.{i,j} in
+      if v < -1.0 || v > 1.0 then all_in_range := false
+    done
+  done;
+  check bool "tanh values in range [-1,1]" true !all_in_range
+
+(* Test for Tanh gradient *)
+let test_tanh_grad_basic () =
+  let input = Mat.of_array [| [| 0.0; 1.0; -1.0 |] |] in
+  let result = Activations.tanh_grad input in
+  let rows, cols = Mat.dim1 result, Mat.dim2 result in
+  (* Check all gradient values are positive and <= 1 (tanh gradient is always in (0,1]) *)
+  let all_valid = ref true in
+  for i = 1 to rows do
+    for j = 1 to cols do
+      let v = result.{i,j} in
+      if v <= 0.0 || v > 1.0 then all_valid := false
+    done
+  done;
+  check bool "tanh_grad values in (0,1]" true !all_valid
+
 let relu_grad_property =
   Q.Test.make ~count:10 ~name:"relu_grad is 0 or 1"
     (Q.pair (Q.int_range 1 5) (Q.int_range 1 5))
@@ -140,6 +179,9 @@ let activation_tests = [
   test_case "sigmoid basic" `Quick test_sigmoid_basic;
   test_case "sigmoid batch" `Quick test_sigmoid_batch;
   test_case "sigmoid_grad basic" `Quick test_sigmoid_grad_basic;
+  test_case "tanh basic" `Quick test_tanh_basic;
+  test_case "tanh batch" `Quick test_tanh_batch;
+  test_case "tanh_grad basic" `Quick test_tanh_grad_basic;
 ]
 
 let property_tests = [
