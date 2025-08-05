@@ -204,6 +204,77 @@ let test_softmax_grad_basic () =
   let expected = Mat.of_array [| [| 0.2; 0.3; -0.5 |] |] in
   check mat_testable "softmax_grad basic test" expected result
 
+(* Test for Mean Squared Error loss *)
+let test_mse_basic () =
+  let y_pred = Mat.of_array [| [| 1.0; 2.0; 3.0 |] |] in
+  let y_true = Mat.of_array [| [| 1.5; 1.8; 2.9 |] |] in
+  let result = Losses.mean_squared_error y_pred y_true in
+  (* MSE = (1/2) * mean((y_pred - y_true)^2) *)
+  (* Differences: [-0.5, 0.2, 0.1] *)
+  (* Squared: [0.25, 0.04, 0.01] *)
+  (* Mean: 0.1, so MSE = 0.5 * 0.1 = 0.05 *)
+  let expected = 0.05 in
+  check (float 1e-10) "mse basic test" expected result
+
+let test_mse_batch () =
+  let y_pred = Mat.of_array [| 
+    [| 1.0; 2.0 |];
+    [| 3.0; 4.0 |]
+  |] in
+  let y_true = Mat.of_array [| 
+    [| 1.0; 2.0 |];
+    [| 3.0; 4.0 |]
+  |] in
+  let result = Losses.mean_squared_error y_pred y_true in
+  let expected = 0.0 in
+  check (float 1e-10) "mse perfect predictions" expected result
+
+(* Test for MSE gradient *)
+let test_mse_grad_basic () =
+  let y_pred = Mat.of_array [| [| 2.0; 3.0 |] |] in
+  let y_true = Mat.of_array [| [| 1.0; 2.5 |] |] in
+  let result = Losses.mse_grad y_pred y_true in
+  (* MSE gradient = (y_pred - y_true) / batch_size *)
+  (* Differences: [1.0, 0.5] *)
+  (* Batch size = 1, so gradient = [1.0, 0.5] *)
+  let expected = Mat.of_array [| [| 1.0; 0.5 |] |] in
+  check mat_testable "mse_grad basic test" expected result
+
+(* Test for Cross Entropy loss *)
+let test_cross_entropy_basic () =
+  let y_pred = Mat.of_array [| [| 0.7; 0.2; 0.1 |] |] in
+  let y_true = Mat.of_array [| [| 1.0; 0.0; 0.0 |] |] in
+  let result = Losses.cross_entropy y_pred y_true in
+  (* Cross entropy = -sum(y_true * log(y_pred + eps)) / batch_size *)
+  (* = -(1.0 * log(0.7) + 0.0 * log(0.2) + 0.0 * log(0.1)) / 1 *)
+  (* = -log(0.7) ≈ 0.35667 *)
+  let expected = -.log 0.7 in
+  check (float 1e-5) "cross_entropy basic test" expected result
+
+let test_cross_entropy_batch () =
+  let y_pred = Mat.of_array [| 
+    [| 0.9; 0.1 |];
+    [| 0.3; 0.7 |]
+  |] in
+  let y_true = Mat.of_array [| 
+    [| 1.0; 0.0 |];
+    [| 0.0; 1.0 |]
+  |] in
+  let result = Losses.cross_entropy y_pred y_true in
+  (* Sample 1: -log(0.9), Sample 2: -log(0.7) *)
+  (* Average: ((-log(0.9)) + (-log(0.7))) / 2 *)
+  let expected = (-.log 0.9 +. -.log 0.7) /. 2.0 in
+  check (float 1e-5) "cross_entropy batch test" expected result
+
+(* Test for Cross Entropy gradient *)
+let test_cross_entropy_grad_basic () =
+  let y_pred = Mat.of_array [| [| 0.7; 0.2; 0.1 |] |] in
+  let y_true = Mat.of_array [| [| 1.0; 0.0; 0.0 |] |] in
+  let result = Losses.cross_entropy_grad y_pred y_true in
+  (* Cross entropy gradient = (y_pred - y_true) / batch_size *)
+  let expected = Mat.of_array [| [| -0.3; 0.2; 0.1 |] |] in
+  check mat_testable "cross_entropy_grad basic test" expected result
+
 let relu_grad_property =
   Q.Test.make ~count:10 ~name:"relu_grad is 0 or 1"
     (Q.pair (Q.int_range 1 5) (Q.int_range 1 5))
@@ -243,6 +314,15 @@ let activation_tests = [
   test_case "softmax_grad basic" `Quick test_softmax_grad_basic;
 ]
 
+let loss_tests = [
+  test_case "mse basic" `Quick test_mse_basic;
+  test_case "mse batch" `Quick test_mse_batch;
+  test_case "mse_grad basic" `Quick test_mse_grad_basic;
+  test_case "cross_entropy basic" `Quick test_cross_entropy_basic;
+  test_case "cross_entropy batch" `Quick test_cross_entropy_batch;
+  test_case "cross_entropy_grad basic" `Quick test_cross_entropy_grad_basic;
+]
+
 let property_tests = [
   QCheck_alcotest.to_alcotest relu_property;
   QCheck_alcotest.to_alcotest relu_grad_property;
@@ -251,5 +331,6 @@ let property_tests = [
 let () =
   run "Lacaml Extra Tests" [
     ("Activations", activation_tests);
+    ("Losses", loss_tests);
     ("Properties", property_tests);
   ]
