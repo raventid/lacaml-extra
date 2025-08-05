@@ -149,6 +149,61 @@ let test_tanh_grad_basic () =
   done;
   check bool "tanh_grad values in (0,1]" true !all_valid
 
+(* Test for Softmax activation function *)
+let test_softmax_basic () =
+  let input = Mat.of_array [| [| 1.0; 2.0; 3.0 |] |] in
+  let result = Activations.softmax input in
+  let _, cols = Mat.dim1 result, Mat.dim2 result in
+  (* Check that each row sums to 1.0 *)
+  let sum = ref 0.0 in
+  for j = 1 to cols do
+    sum := !sum +. result.{1,j}
+  done;
+  let diff = abs_float (!sum -. 1.0) in
+  check bool "softmax row sums to 1" true (diff < 1e-10)
+
+let test_softmax_batch () =
+  let input = Mat.of_array [| 
+    [| 1.0; 2.0; 3.0 |];
+    [| 0.0; 1.0; 0.0 |]
+  |] in
+  let result = Activations.softmax input in
+  let rows, cols = Mat.dim1 result, Mat.dim2 result in
+  (* Check that each row sums to 1.0 *)
+  let all_sum_to_one = ref true in
+  for i = 1 to rows do
+    let sum = ref 0.0 in
+    for j = 1 to cols do
+      sum := !sum +. result.{i,j}
+    done;
+    let diff = abs_float (!sum -. 1.0) in
+    if diff >= 1e-10 then all_sum_to_one := false
+  done;
+  check bool "softmax batch rows sum to 1" true !all_sum_to_one
+
+let test_softmax_stability () =
+  (* Test numerical stability with large values *)
+  let input = Mat.of_array [| [| 1000.0; 1001.0; 1002.0 |] |] in
+  let result = Activations.softmax input in
+  (* Should not contain NaN or infinity *)
+  let is_finite = ref true in
+  let rows, cols = Mat.dim1 result, Mat.dim2 result in
+  for i = 1 to rows do
+    for j = 1 to cols do
+      let v = result.{i,j} in
+      if not (Float.is_finite v) then is_finite := false
+    done
+  done;
+  check bool "softmax is numerically stable" true !is_finite
+
+(* Test for Softmax gradient (commonly used with cross-entropy) *)
+let test_softmax_grad_basic () =
+  let y_pred = Mat.of_array [| [| 0.2; 0.3; 0.5 |] |] in
+  let y_true = Mat.of_array [| [| 0.0; 0.0; 1.0 |] |] in
+  let result = Activations.softmax_grad y_pred y_true in
+  let expected = Mat.of_array [| [| 0.2; 0.3; -0.5 |] |] in
+  check mat_testable "softmax_grad basic test" expected result
+
 let relu_grad_property =
   Q.Test.make ~count:10 ~name:"relu_grad is 0 or 1"
     (Q.pair (Q.int_range 1 5) (Q.int_range 1 5))
@@ -182,6 +237,10 @@ let activation_tests = [
   test_case "tanh basic" `Quick test_tanh_basic;
   test_case "tanh batch" `Quick test_tanh_batch;
   test_case "tanh_grad basic" `Quick test_tanh_grad_basic;
+  test_case "softmax basic" `Quick test_softmax_basic;
+  test_case "softmax batch" `Quick test_softmax_batch;
+  test_case "softmax stability" `Quick test_softmax_stability;
+  test_case "softmax_grad basic" `Quick test_softmax_grad_basic;
 ]
 
 let property_tests = [
